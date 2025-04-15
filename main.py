@@ -18,21 +18,23 @@ USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 
 
 def get_deals():
-    soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
-    deals = soup.select(".DealContent")[:POST_LIMIT]
+    print("[INFO] Scraping Amazon's Deal Grid...")
+    response = requests.get(AMAZON_URL, headers=USER_AGENT)
+    soup = BeautifulSoup(response.text, "html.parser")
+    deal_links = soup.select("div[data-testid='grid-deals-container'] a[href*='/dp/']")
     extracted_deals = []
 
-    for deal in deals:
-        try:
-            title_tag = deal.select_one(".DealTitle")
-            link_tag = deal.select_one("a")
-            if title_tag and link_tag:
-                title = title_tag.get_text(strip=True)
-                raw_link = link_tag.get("href")
-                affiliate_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}"
-                extracted_deals.append((title, affiliate_link))
-        except Exception as e:
-            print("[ERROR] Failed to parse a deal:", e)
+    seen = set()
+    for link_tag in deal_links:
+        raw_link = link_tag.get("href")
+        title = link_tag.get_text(strip=True)
+        if not raw_link or raw_link in seen or not title:
+            continue
+        seen.add(raw_link)
+        full_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}"
+        extracted_deals.append((title, full_link))
+        if len(extracted_deals) >= POST_LIMIT:
+            break
 
     return extracted_deals
 
