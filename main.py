@@ -1,3 +1,5 @@
+# amazon_facebook_deal_bot/main.py
+
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -48,6 +50,7 @@ def post_to_facebook(title, link):
 def main():
     print("[BOT STARTED] Fetching Amazon deals...")
     deals = get_deals()
+    print(f"[INFO] Found {len(deals)} deals.")
     for title, link in deals:
         print("[POSTING]", title)
         post_to_facebook(title, link)
