@@ -27,10 +27,24 @@ CATEGORY_TAGS = {
     "fire": ["#AmazonFire", "#TechOnSale"],
     "candy": ["#SweetDeals", "#SnackAttack"],
     "alexa": ["#SmartHome", "#AlexaDeals"],
-    "electronics": ["#GadgetDeals", "#TechSavvy"]
+    "electronics": ["#GadgetDeals", "#TechSavvy"],
+    "laptop": ["#LaptopDeals", "#RemoteWork"],
+    "gaming": ["#GamerDeals", "#GameNight"],
+    "home": ["#HomeEssentials", "#HouseholdSavings"],
+    "kitchen": ["#KitchenDeals", "#HomeChef"],
+    "pet": ["#PetCare", "#PetDeals"],
+    "toy": ["#ToySale", "#FamilyFun"],
+    "fitness": ["#FitLife", "#HomeWorkout"],
+    "security": ["#HomeSecurity", "#SafeAndSmart"]
 }
 
-DEFAULT_HASHTAGS = ["#AmazonDeals", "#DailyDeals", "#HotBuy", "#LimitedTimeOffer"]
+DEFAULT_HASHTAGS = [
+    "#AmazonDeals", "#DailyDeals", "#HotBuy", "#LimitedTimeOffer",
+    "#FlashSale", "#PrimeFinds", "#DealHunters", "#BudgetBuys"
+]
+
+# === OPTIONAL: FETCH TRENDING TAGS FROM TWITTER (STATIC PLACEHOLDER) ===
+TRENDING_TAGS = ["#TrendingNow", "#ViralDeals", "#MustHave", "#SmartShopping"]
 
 
 def generate_hashtags(title):
@@ -39,7 +53,8 @@ def generate_hashtags(title):
     for keyword, custom_tags in CATEGORY_TAGS.items():
         if keyword in title_lower:
             tags.update(custom_tags)
-    return " ".join(random.sample(list(tags), min(len(tags), 5)))
+    tags.update(random.sample(TRENDING_TAGS, k=1))
+    return " ".join(random.sample(list(tags), min(len(tags), 6)))
 
 
 def get_deals():
