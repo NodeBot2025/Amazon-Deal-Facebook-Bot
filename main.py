@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 import random
+import re
 from dotenv import load_dotenv
 
 # === LOAD SECRETS ===
@@ -57,6 +58,11 @@ def generate_hashtags(title):
     return " ".join(random.sample(list(tags), min(len(tags), 6)))
 
 
+def clean_title(title):
+    # Remove duplicated price patterns like $13.57$1357
+    return re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)
+
+
 def get_deals():
     print("[INFO] Scraping Amazon's Deals page...")
     response = requests.get(AMAZON_URL, headers=USER_AGENT)
@@ -77,7 +83,7 @@ def get_deals():
 
         for link_tag in deal_links:
             raw_link = link_tag.get("href")
-            title = link_tag.get_text(strip=True)
+            title = clean_title(link_tag.get_text(strip=True))
             image_tag = link_tag.find("img")
             image_url = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
 
