@@ -43,23 +43,30 @@ def get_deals():
         for link_tag in deal_links:
             raw_link = link_tag.get("href")
             title = link_tag.get_text(strip=True)
+            image_tag = link_tag.find("img")
+            image_url = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
+
             if not raw_link or raw_link in seen or not title:
                 continue
             seen.add(raw_link)
             full_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}"
-            extracted_deals.append((title, full_link))
+            extracted_deals.append((title, full_link, image_url))
             if len(extracted_deals) >= POST_LIMIT:
                 return extracted_deals
 
     return extracted_deals
 
 
-def post_to_facebook(title, link):
+def post_to_facebook(title, link, image_url=None):
+    url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
     payload = {
-        "message": f"🔥 Deal Alert!\n{title}\n👉 {link}",
+        "caption": f"🔥 Deal Alert!\n{title}\n👉 {link}",
         "access_token": FB_ACCESS_TOKEN
     }
-    url = f"https://graph.facebook.com/{FB_PAGE_ID}/feed"
+    files = None
+    if image_url:
+        payload["url"] = image_url
+
     response = requests.post(url, data=payload)
     print("[FB POST]", response.json())
 
@@ -68,9 +75,9 @@ def main():
     print("[BOT STARTED] Fetching Amazon deals...")
     deals = get_deals()
     print(f"[INFO] Found {len(deals)} deals.")
-    for title, link in deals:
+    for title, link, image_url in deals:
         print("[POSTING]", title)
-        post_to_facebook(title, link)
+        post_to_facebook(title, link, image_url)
         time.sleep(10)
 
 
