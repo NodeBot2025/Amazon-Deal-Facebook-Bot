@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
+import random
 from dotenv import load_dotenv
 
 # === LOAD SECRETS ===
@@ -20,13 +21,32 @@ USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     raise ValueError("FB_PAGE_ID or FB_ACCESS_TOKEN is missing! Check your .env file or GitHub Secrets.")
 
+# === CATEGORY/KEYWORD-BASED HASHTAGS ===
+CATEGORY_TAGS = {
+    "tablet": ["#TabletDeal", "#KidsTech"],
+    "fire": ["#AmazonFire", "#TechOnSale"],
+    "candy": ["#SweetDeals", "#SnackAttack"],
+    "alexa": ["#SmartHome", "#AlexaDeals"],
+    "electronics": ["#GadgetDeals", "#TechSavvy"]
+}
+
+DEFAULT_HASHTAGS = ["#AmazonDeals", "#DailyDeals", "#HotBuy", "#LimitedTimeOffer"]
+
+
+def generate_hashtags(title):
+    tags = set(DEFAULT_HASHTAGS)
+    title_lower = title.lower()
+    for keyword, custom_tags in CATEGORY_TAGS.items():
+        if keyword in title_lower:
+            tags.update(custom_tags)
+    return " ".join(random.sample(list(tags), min(len(tags), 5)))
+
 
 def get_deals():
     print("[INFO] Scraping Amazon's Deals page...")
     response = requests.get(AMAZON_URL, headers=USER_AGENT)
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # Try multiple strategies to find deals
     selectors = [
         "div.a-section.a-text-center > a[href*='/dp/']",
         "a[href*='/dp/']",
@@ -59,11 +79,11 @@ def get_deals():
 
 def post_to_facebook(title, link, image_url=None):
     url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
+    hashtags = generate_hashtags(title)
     payload = {
-        "caption": f"🔥 Deal Alert!\n{title}\n👉 {link}",
+        "caption": f"🔥 Deal Alert!\n{title}\n👉 {link}\n\n{hashtags}",
         "access_token": FB_ACCESS_TOKEN
     }
-    files = None
     if image_url:
         payload["url"] = image_url
 
