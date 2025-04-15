@@ -59,8 +59,12 @@ def generate_hashtags(title):
 
 
 def clean_title(title):
-    # Remove duplicated price patterns like $13.57$1357
-    return re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)
+    # Fix duplicated or malformed prices and spacing
+    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)  # remove duplicate prices
+    title = re.sub(r'(\$\d+(\.\d{2})?)\d{2,}', r'\1', title)  # $19.99$1999 -> $19.99
+    title = re.sub(r'(\d)([A-Z])', r'\1 \2', title)  # $15.97Typical -> $15.97 Typical
+    title = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', title)  # ensure space between numbers and words
+    return title.strip()
 
 
 def get_deals():
