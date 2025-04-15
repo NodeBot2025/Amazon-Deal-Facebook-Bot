@@ -16,6 +16,10 @@ FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 POST_LIMIT = 3
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 
+# === SAFETY CHECK FOR MISSING SECRETS ===
+if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
+    raise ValueError("FB_PAGE_ID or FB_ACCESS_TOKEN is missing! Check your .env file or GitHub Secrets.")
+
 
 def get_deals():
     print("[INFO] Scraping Amazon's Deals page...")
