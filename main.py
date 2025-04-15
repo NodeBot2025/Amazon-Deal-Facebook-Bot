@@ -18,23 +18,34 @@ USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 
 
 def get_deals():
-    print("[INFO] Scraping Amazon's Deal Grid...")
+    print("[INFO] Scraping Amazon's Deals page...")
     response = requests.get(AMAZON_URL, headers=USER_AGENT)
     soup = BeautifulSoup(response.text, "html.parser")
-    deal_links = soup.select("div[data-testid='grid-deals-container'] a[href*='/dp/']")
-    extracted_deals = []
 
+    # Try multiple strategies to find deals
+    selectors = [
+        "div.a-section.a-text-center > a[href*='/dp/']",
+        "a[href*='/dp/']",
+        "div.a-row.a-size-base.a-color-secondary > a[href*='/dp/']"
+    ]
+
+    extracted_deals = []
     seen = set()
-    for link_tag in deal_links:
-        raw_link = link_tag.get("href")
-        title = link_tag.get_text(strip=True)
-        if not raw_link or raw_link in seen or not title:
-            continue
-        seen.add(raw_link)
-        full_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}"
-        extracted_deals.append((title, full_link))
-        if len(extracted_deals) >= POST_LIMIT:
-            break
+
+    for selector in selectors:
+        print(f"[DEBUG] Trying selector: {selector}")
+        deal_links = soup.select(selector)
+
+        for link_tag in deal_links:
+            raw_link = link_tag.get("href")
+            title = link_tag.get_text(strip=True)
+            if not raw_link or raw_link in seen or not title:
+                continue
+            seen.add(raw_link)
+            full_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}"
+            extracted_deals.append((title, full_link))
+            if len(extracted_deals) >= POST_LIMIT:
+                return extracted_deals
 
     return extracted_deals
 
