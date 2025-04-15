@@ -59,12 +59,18 @@ def generate_hashtags(title):
 
 
 def clean_title(title):
-    # Fix duplicate/malformed prices and spacing
-    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)  # remove exact price repeat
-    title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title)  # $19.99$1999 or $69.99$69 -> $19.99
-    title = re.sub(r'(\d)([A-Z])', r'\1 \2', title)  # ensure space after number before uppercase
-    title = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', title)  # ensure space after number before letters
+    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)
+    title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title)
+    title = re.sub(r'(\d)([A-Z])', r'\1 \2', title)
+    title = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', title)
     return title.strip()
+
+
+def clean_amazon_url(raw_link):
+    match = re.search(r"/dp/([A-Z0-9]{10})", raw_link)
+    if match:
+        return f"https://www.amazon.com/dp/{match.group(1)}{AFFILIATE_TAG}"
+    return None
 
 
 def get_deals():
@@ -91,11 +97,11 @@ def get_deals():
             image_tag = link_tag.find("img")
             image_url = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
 
-            if not raw_link or raw_link in seen or not title:
+            clean_link = clean_amazon_url(raw_link)
+            if not clean_link or clean_link in seen or not title:
                 continue
-            seen.add(raw_link)
-            full_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}"
-            extracted_deals.append((title, full_link, image_url))
+            seen.add(clean_link)
+            extracted_deals.append((title, clean_link, image_url))
             if len(extracted_deals) >= POST_LIMIT:
                 return extracted_deals
 
