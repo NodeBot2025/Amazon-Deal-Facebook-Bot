@@ -46,7 +46,10 @@ def get_image_url(product_block):
 
 
 def clean_title(raw_text):
-    cleaned = re.sub(r'(\b\d{1,2}% off\b)|(\$\d+(\.\d{2})?)|(Typical:)|(Limited time deal)', '', raw_text, flags=re.IGNORECASE)
+    # Remove discount phrases, dollar prices, and common promo text
+    cleaned = re.sub(r'\b\d{1,2}%\s*off\b', '', raw_text, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)
+    cleaned = re.sub(r'\b(Typical:|Limited time deal)\b', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
 
