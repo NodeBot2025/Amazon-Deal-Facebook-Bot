@@ -64,7 +64,10 @@ def reset_posted_file_weekly():
     today = datetime.utcnow()
     week_file = f"week_{today.strftime('%Y_%U')}.marker"
     if not os.path.exists(week_file):
-        open(POSTED_FILE, 'w').close()
+        if os.path.exists(POSTED_FILE):
+            os.remove(POSTED_FILE)
+        with open(POSTED_FILE, 'w') as f:
+            f.write('')
         with open(week_file, 'w') as f:
             f.write('reset')
 
@@ -72,7 +75,8 @@ def reset_posted_file_weekly():
 def load_posted_asins():
     reset_posted_file_weekly()
     if not os.path.exists(POSTED_FILE):
-        return set()
+        with open(POSTED_FILE, 'w') as f:
+            f.write('')
     with open(POSTED_FILE, "r") as file:
         return set(line.strip() for line in file if line.strip())
 
