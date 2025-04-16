@@ -135,7 +135,7 @@ def get_deals():
             if not title or not href or "/dp/" not in href:
                 continue
 
-            asin = href.split("/dp/")[1].split("/")[0]
+            asin = href.split("/dp/")[1].split("/")[0].split("?")[0]
             if asin in seen:
                 continue
             seen.add(asin)
@@ -156,8 +156,9 @@ def get_deals():
             caption = f"""{intro}
 {discount}  {title}
 {discount} — List: ${list_price} | Deal: ${deal_price}
-{full_link}
+👇 {full_link}
 
+  
 {hashtags}"""
 
             deals.append((caption, image_url))
