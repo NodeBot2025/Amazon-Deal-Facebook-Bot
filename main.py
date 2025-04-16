@@ -182,7 +182,7 @@ def get_deals():
 
             if list_price and deal_price and discount:
                 caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
-            caption_lines.append(f"{affiliate_link}\n")  # Direct link for Facebook to render preview
+            caption_lines.append(affiliate_link)  # LAST LINE = THE LINK (for FB preview)
             if hashtags:
                 caption_lines.append(hashtags)
 
@@ -198,9 +198,19 @@ def get_deals():
 
 
 def post_to_facebook(caption):
+    # Extract the last line (your affiliate link)
+    lines = caption.strip().split("\n")
+    if lines and "http" in lines[-1]:
+        link = lines[-1].strip()
+        message = "\n".join(lines[:-1]).strip()
+    else:
+        link = ""
+        message = caption
+
     url = f"https://graph.facebook.com/{FB_PAGE_ID}/feed"
     payload = {
-        "message": caption,
+        "message": message,
+        "link": link,
         "access_token": FB_ACCESS_TOKEN
     }
 
