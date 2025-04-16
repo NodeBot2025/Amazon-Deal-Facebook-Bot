@@ -46,7 +46,7 @@ def get_image_url(product_block):
 
 
 def clean_title(raw_text):
-    cleaned = re.sub(r'(\$\d+(\.\d{2})?)|(Typical:)|(Limited time deal)', '', raw_text)
+    cleaned = re.sub(r'(\b\d{1,2}% off\b)|(\$\d+(\.\d{2})?)|(Typical:)|(Limited time deal)', '', raw_text, flags=re.IGNORECASE)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
 
@@ -96,7 +96,7 @@ def get_deals():
 
             if list_price and deal_price and discount:
                 caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
-            caption_lines.append(f"👉 {affiliate_link}\n")  # Add double spacing after link
+            caption_lines.append(f"👉 {affiliate_link}\n")
             if hashtags:
                 caption_lines.append(hashtags)
 
