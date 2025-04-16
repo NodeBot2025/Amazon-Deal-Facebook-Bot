@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
+import random
 from dotenv import load_dotenv
 
 # === LOAD SECRETS ===
@@ -45,9 +46,10 @@ def get_image_url(product_block):
 def get_deals():
     soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
     all_blocks = soup.select("a[href*='/dp/']")
+    random.shuffle(all_blocks)
     extracted = []
 
-    print(f"[DEBUG] Found {len(all_blocks)} deal-ish links.")
+    print(f"[DEBUG] Found {len(all_blocks)} deal-ish links after shuffling.")
 
     for block in all_blocks:
         try:
