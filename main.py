@@ -63,7 +63,7 @@ DISCOUNT_TIERS = [
     (50, ["🔥 Insane deal!", "Don't miss this steal!", "Absolute must-grab!"]),
     (30, ["Hot deal!", "Big savings!", "Top value pick!"]),
     (15, ["Nice price drop!", "Worth checking out!", "Solid value!"]),
-    (1,  ["Slight savings!", "Small discount — still worth it!"])
+    (1,  ["Small discount — still worth it!"])
 ]
 
 # === UTILITY FUNCTIONS ===
@@ -97,9 +97,10 @@ def get_image_url(product_block):
 
 
 def clean_title(raw_text):
-    cleaned = re.sub(r'(?i)\b\d{1,2}%\s*off\b', '', raw_text)
-    cleaned = re.sub(r'(?i)Limited time deal|Typical:|List:', '', cleaned)
-    cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)
+    cleaned = re.sub(r'(?i)\b\d{1,3}%\s*off\b', '', raw_text)  # "20% off"
+    cleaned = re.sub(r'(?i)\b\d{1,3}%\b', '', cleaned)         # "20%" (standalone)
+    cleaned = re.sub(r'(?i)(Limited time deal|Typical:|List:)', '', cleaned)
+    cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)        # "$19.99"
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
 
@@ -129,8 +130,8 @@ def get_intro_line():
 def get_smart_intro(title, discount_str):
     title_lower = title.lower()
     base_intro = get_intro_line()
-    
-    # Category match
+
+    # Match category
     for keyword, phrases in CATEGORY_KEYWORDS.items():
         if keyword in title_lower:
             emoji = EMOJIS.get(keyword, "")
@@ -139,7 +140,7 @@ def get_smart_intro(title, discount_str):
     else:
         category_intro = base_intro
 
-    # Tiered discount tone
+    # Tiered discount intro
     try:
         discount_num = int(discount_str.split('%')[0])
     except:
@@ -155,7 +156,7 @@ def get_smart_intro(title, discount_str):
     return f"{tier_intro} {category_intro}".strip()
 
 
-# === SCRAPE & POST ===
+# === MAIN POST FUNCTIONALITY ===
 
 def get_deals():
     soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
