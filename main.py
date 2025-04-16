@@ -13,40 +13,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AMAZON_URL = "https://www.amazon.com/deals?bubble-id=trending-bubble"
-AFFILIATE_TAG = "?tag=keithw.-20"  # Updated affiliate tag
+AFFILIATE_TAG = "?tag=keithw.-20"
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 POST_LIMIT = 3
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 POSTED_FILE = "posted_asins.txt"
 
-# === SAFETY CHECK FOR MISSING SECRETS ===
+# === SAFETY CHECK ===
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
-    raise ValueError("FB_PAGE_ID or FB_ACCESS_TOKEN is missing! Check your .env file or GitHub Secrets.")
+    raise ValueError("FB_PAGE_ID or FB_ACCESS_TOKEN is missing! Check your .env or GitHub Secrets.")
 
-# === CATEGORY/KEYWORD-BASED HASHTAGS ===
-CATEGORY_TAGS = {
-    "tablet": ["#TabletDeal", "#KidsTech"],
-    "fire": ["#AmazonFire", "#TechOnSale"],
-    "candy": ["#SweetDeals", "#SnackAttack"],
-    "alexa": ["#SmartHome", "#AlexaDeals"],
-    "electronics": ["#GadgetDeals", "#TechSavvy"],
-    "laptop": ["#LaptopDeals", "#RemoteWork"],
-    "gaming": ["#GamerDeals", "#GameNight"],
-    "home": ["#HomeEssentials", "#HouseholdSavings"],
-    "kitchen": ["#KitchenDeals", "#HomeChef"],
-    "pet": ["#PetCare", "#PetDeals"],
-    "toy": ["#ToySale", "#FamilyFun"],
-    "fitness": ["#FitLife", "#HomeWorkout"],
-    "security": ["#HomeSecurity", "#SafeAndSmart"]
-}
-
-DEFAULT_HASHTAGS = [
-    "#AmazonDeals", "#DailyDeals", "#HotBuy", "#LimitedTimeOffer",
-    "#FlashSale", "#PrimeFinds", "#DealHunters", "#BudgetBuys"
-]
-
-# === OPTIONAL: FETCH TRENDING TAGS FROM TWITTER (STATIC PLACEHOLDER) ===
+CATEGORY_TAGS = { "tablet": ["#TabletDeal", "#KidsTech"], "fire": ["#AmazonFire", "#TechOnSale"], "candy": ["#SweetDeals", "#SnackAttack"], "alexa": ["#SmartHome", "#AlexaDeals"], "electronics": ["#GadgetDeals", "#TechSavvy"], "laptop": ["#LaptopDeals", "#RemoteWork"], "gaming": ["#GamerDeals", "#GameNight"], "home": ["#HomeEssentials", "#HouseholdSavings"], "kitchen": ["#KitchenDeals", "#HomeChef"], "pet": ["#PetCare", "#PetDeals"], "toy": ["#ToySale", "#FamilyFun"], "fitness": ["#FitLife", "#HomeWorkout"], "security": ["#HomeSecurity", "#SafeAndSmart"] }
+DEFAULT_HASHTAGS = ["#AmazonDeals", "#DailyDeals", "#HotBuy", "#LimitedTimeOffer", "#FlashSale", "#PrimeFinds", "#DealHunters", "#BudgetBuys"]
 TRENDING_TAGS = ["#TrendingNow", "#ViralDeals", "#MustHave", "#SmartShopping"]
 
 
@@ -61,11 +40,9 @@ def generate_hashtags(title):
 
 
 def clean_title(title):
-    # Clean malformed prices like $69.99.99 or duplicate prices
-    title = re.sub(r'\$(\d+\.\d{2})\.\d{2}', r'\$\1', title)  # Fix $69.99.99 -> $69.99
-    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)        # Remove exact duplicates
-    title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title) # $13.57$1357 -> $13.57
-    # Fix List: malformed values
+    title = re.sub(r'\$(\d+\.\d{2})\.\d{2}', r'\$\1', title)
+    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)
+    title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title)
     list_price_match = re.search(r'(List:\s*)\$\d+(\.\d{2})?\.\d{2}', title)
     if list_price_match:
         correct_price = re.search(r'(\$\d+(\.\d{2})?)', title)
@@ -97,37 +74,31 @@ def load_posted_asins():
     if not os.path.exists(POSTED_FILE):
         return set()
     with open(POSTED_FILE, "r") as file:
-        return set(line.strip() for line in file)
+        return set(line.strip() for line in file if line.strip())
 
 
 def save_posted_asin(asin):
-    with open(POSTED_FILE, "a") as file:
-        file.write(f"{asin}\n")
+    asins = load_posted_asins()
+    if asin not in asins:
+        with open(POSTED_FILE, "a") as file:
+            file.write(f"{asin}\n")
 
 
 def get_deals():
     print("[INFO] Scraping Amazon's Trending Deals page...")
     response = requests.get(AMAZON_URL, headers=USER_AGENT)
     soup = BeautifulSoup(response.text, "html.parser")
-
-    selectors = [
-        "a[href*='/dp/']"
-    ]
-
-    extracted_deals = []
-    seen = set()
+    selectors = ["a[href*='/dp/']"]
+    extracted_deals, seen = [], set()
     posted_asins = load_posted_asins()
 
     for selector in selectors:
-        print(f"[DEBUG] Trying selector: {selector}")
         deal_links = soup.select(selector)
-
         for link_tag in deal_links:
             raw_link = link_tag.get("href")
             title = clean_title(link_tag.get_text(strip=True))
             image_tag = link_tag.find("img")
             image_url = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
-
             asin, clean_link = clean_amazon_url(raw_link)
             if not asin or asin in posted_asins or asin in seen or not title:
                 continue
@@ -154,7 +125,6 @@ def post_to_facebook(asin, title, link, image_url=None):
             "message": f"🔥 Deal Alert!\n{title}\n👉 {link}\n\n{hashtags}",
             "access_token": FB_ACCESS_TOKEN
         }
-
     response = requests.post(url, data=payload)
     print("[FB POST]", response.json())
     save_posted_asin(asin)
