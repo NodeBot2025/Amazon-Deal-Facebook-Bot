@@ -40,18 +40,12 @@ def calculate_discount(list_price, deal_price):
         return None
 
 
-def get_limited_time_text(block):
-    tag = block.find(string=lambda text: text and "Limited time deal" in text)
-    return tag.strip() if tag else None
-
-
 def get_image_url(product_block):
     img_tag = product_block.select_one("img")
     return img_tag.get("src") if img_tag else None
 
 
 def clean_title(raw_text):
-    # Remove dollar signs, price values, and tags like 'Typical:', 'Limited time deal'
     cleaned = re.sub(r'(\$\d+(\.\d{2})?)|(Typical:)|(Limited time deal)', '', raw_text)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
@@ -78,13 +72,10 @@ def get_deals():
             list_price, deal_price = extract_price_data(parent or block)
             image_url = get_image_url(parent or block)
             discount = calculate_discount(list_price, deal_price)
-            ltd_text = get_limited_time_text(parent or block)
 
             caption_lines = []
-            if discount:
-                caption_lines.append(discount + (f" {ltd_text}" if ltd_text else ""))
             caption_lines.append(title)
-            if list_price and deal_price:
+            if list_price and deal_price and discount:
                 caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
             caption_lines.append(f"👉 {affiliate_link}")
 
