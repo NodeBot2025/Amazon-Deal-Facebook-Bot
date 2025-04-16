@@ -11,51 +11,43 @@ AMAZON_URL = "https://www.amazon.com/gp/goldbox"
 AFFILIATE_TAG = "?tag=keithw.-20"
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
-POST_LIMIT = 3
+POST_LIMIT = 5
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 
 
-def extract_price_data(product_soup):
-    try:
-        list_price_tag = product_soup.select_one('.a-price.a-text-price span.a-offscreen')
-        list_price = list_price_tag.get_text(strip=True) if list_price_tag else None
-
-        deal_price_tag = product_soup.select_one('.a-price:not(.a-text-price) span.a-offscreen')
-        deal_price = deal_price_tag.get_text(strip=True) if deal_price_tag else None
-
-        return list_price, deal_price
-    except Exception as e:
-        print("[ERROR parsing price]", e)
-        return None, None
+def extract_price_data(block):
+    prices = block.select(".a-offscreen")
+    prices = [p.get_text(strip=True) for p in prices if p.get_text(strip=True).startswith("$")]
+    return prices[1] if len(prices) > 1 else None, prices[0] if prices else None
 
 
 def get_deals():
     soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
-    deals = soup.select(".DealCardModule")[:POST_LIMIT]
-    extracted_deals = []
+    all_blocks = soup.select("a[href*='/dp/']")
+    extracted = []
 
-    print(f"[DEBUG] Found {len(deals)} potential card modules.")
+    print(f"[DEBUG] Found {len(all_blocks)} deal-ish links.")
 
-    for deal in deals:
+    for block in all_blocks:
         try:
-            title_tag = deal.select_one(".a-spacing-mini") or deal.select_one("h2")
-            link_tag = deal.select_one("a[href]")
-            title = title_tag.get_text(strip=True) if title_tag else "[NO TITLE FOUND]"
-            raw_link = link_tag.get("href") if link_tag else None
-            affiliate_link = f"https://www.amazon.com{raw_link}{AFFILIATE_TAG}" if raw_link else None
+            title = block.get_text(strip=True)
+            href = block.get("href")
+            if not title or not href or "/dp/" not in href:
+                continue
 
-            list_price, deal_price = extract_price_data(deal)
-            print(f"[DEBUG] {title} | List: {list_price} | Deal: {deal_price}")
+            affiliate_link = f"https://www.amazon.com{href.split('?')[0]}{AFFILIATE_TAG}"
+            parent = block.find_parent("div")
+            list_price, deal_price = extract_price_data(parent or block)
 
             formatted_title = f"{title}\nList: {list_price or 'N/A'} | Deal: {deal_price or 'N/A'}"
-            if title and affiliate_link:
-                extracted_deals.append((formatted_title, affiliate_link))
-            else:
-                print("[WARN] Skipping due to missing title or link.")
-        except Exception as e:
-            print("[ERROR] Failed to parse a deal:", e)
+            extracted.append((formatted_title, affiliate_link))
 
-    return extracted_deals
+            if len(extracted) >= POST_LIMIT:
+                break
+        except Exception as e:
+            print("[ERROR parsing block]", e)
+
+    return extracted
 
 
 def post_to_facebook(title, link):
@@ -73,7 +65,7 @@ def main():
     deals = get_deals()
 
     if not deals:
-        print("[INFO] No deals found at all — check selectors or page structure.")
+        print("[INFO] No deals found — structure may have changed.")
     else:
         print(f"[INFO] Found {len(deals)} deals to post.")
 
