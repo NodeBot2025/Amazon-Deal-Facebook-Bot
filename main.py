@@ -61,12 +61,16 @@ def generate_hashtags(title):
 
 
 def clean_title(title):
-    # Fix malformed price patterns, e.g., $139.99 List:$1.99 -> $139.99 List: $139.99
-    price_match = re.findall(r'(\$\d+(\.\d{2})?)', title)
-    if len(price_match) >= 2:
-        title = re.sub(r'(List:\s*)\$\d+(\.\d{2})?', f"\\1{price_match[0][0]}", title)
-    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)
-    title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title)
+    # Clean malformed prices like $69.99.99 or duplicate prices
+    title = re.sub(r'\$(\d+\.\d{2})\.\d{2}', r'\$\1', title)  # Fix $69.99.99 -> $69.99
+    title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)        # Remove exact duplicates
+    title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title) # $13.57$1357 -> $13.57
+    # Fix List: malformed values
+    list_price_match = re.search(r'(List:\s*)\$\d+(\.\d{2})?\.\d{2}', title)
+    if list_price_match:
+        correct_price = re.search(r'(\$\d+(\.\d{2})?)', title)
+        if correct_price:
+            title = re.sub(r'List:\s*\$\d+(\.\d{2})?\.\d{2}', f"List: {correct_price.group(1)}", title)
     title = re.sub(r'(\d)([A-Z])', r'\1 \2', title)
     title = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', title)
     return title.strip()
@@ -136,14 +140,20 @@ def get_deals():
 
 
 def post_to_facebook(asin, title, link, image_url=None):
-    url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
     hashtags = generate_hashtags(title)
-    payload = {
-        "caption": f"🔥 Deal Alert!\n{title}\n👉 {link}\n\n{hashtags}",
-        "access_token": FB_ACCESS_TOKEN
-    }
     if image_url:
-        payload["url"] = image_url
+        url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
+        payload = {
+            "caption": f"🔥 Deal Alert!\n{title}\n👉 {link}\n\n{hashtags}",
+            "access_token": FB_ACCESS_TOKEN,
+            "url": image_url
+        }
+    else:
+        url = f"https://graph.facebook.com/{FB_PAGE_ID}/feed"
+        payload = {
+            "message": f"🔥 Deal Alert!\n{title}\n👉 {link}\n\n{hashtags}",
+            "access_token": FB_ACCESS_TOKEN
+        }
 
     response = requests.post(url, data=payload)
     print("[FB POST]", response.json())
