@@ -6,6 +6,7 @@ import time
 import os
 import random
 import re
+from datetime import datetime
 from dotenv import load_dotenv
 
 # === LOAD SECRETS ===
@@ -17,6 +18,7 @@ FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 POST_LIMIT = 3
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
+POSTED_FILE = "posted_asins.txt"
 
 # === SAFETY CHECK FOR MISSING SECRETS ===
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
@@ -59,6 +61,10 @@ def generate_hashtags(title):
 
 
 def clean_title(title):
+    # Fix malformed price patterns, e.g., $139.99 List:$1.99 -> $139.99 List: $139.99
+    price_match = re.findall(r'(\$\d+(\.\d{2})?)', title)
+    if len(price_match) >= 2:
+        title = re.sub(r'(List:\s*)\$\d+(\.\d{2})?', f"\\1{price_match[0][0]}", title)
     title = re.sub(r'(\$\d+(\.\d{2})?)\1+', r'\1', title)
     title = re.sub(r'(\$\d+(\.\d{2})?)\$?\d{2,}', r'\1', title)
     title = re.sub(r'(\d)([A-Z])', r'\1 \2', title)
@@ -69,8 +75,30 @@ def clean_title(title):
 def clean_amazon_url(raw_link):
     match = re.search(r"/dp/([A-Z0-9]{10})", raw_link)
     if match:
-        return f"https://www.amazon.com/dp/{match.group(1)}{AFFILIATE_TAG}"
-    return None
+        return match.group(1), f"https://www.amazon.com/dp/{match.group(1)}{AFFILIATE_TAG}"
+    return None, None
+
+
+def reset_posted_file_weekly():
+    today = datetime.utcnow()
+    week_file = f"week_{today.strftime('%Y_%U')}.marker"
+    if not os.path.exists(week_file):
+        open(POSTED_FILE, 'w').close()
+        with open(week_file, 'w') as f:
+            f.write('reset')
+
+
+def load_posted_asins():
+    reset_posted_file_weekly()
+    if not os.path.exists(POSTED_FILE):
+        return set()
+    with open(POSTED_FILE, "r") as file:
+        return set(line.strip() for line in file)
+
+
+def save_posted_asin(asin):
+    with open(POSTED_FILE, "a") as file:
+        file.write(f"{asin}\n")
 
 
 def get_deals():
@@ -84,6 +112,7 @@ def get_deals():
 
     extracted_deals = []
     seen = set()
+    posted_asins = load_posted_asins()
 
     for selector in selectors:
         print(f"[DEBUG] Trying selector: {selector}")
@@ -95,18 +124,18 @@ def get_deals():
             image_tag = link_tag.find("img")
             image_url = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
 
-            clean_link = clean_amazon_url(raw_link)
-            if not clean_link or clean_link in seen or not title:
+            asin, clean_link = clean_amazon_url(raw_link)
+            if not asin or asin in posted_asins or asin in seen or not title:
                 continue
-            seen.add(clean_link)
-            extracted_deals.append((title, clean_link, image_url))
+            seen.add(asin)
+            extracted_deals.append((asin, title, clean_link, image_url))
             if len(extracted_deals) >= POST_LIMIT:
                 return extracted_deals
 
     return extracted_deals
 
 
-def post_to_facebook(title, link, image_url=None):
+def post_to_facebook(asin, title, link, image_url=None):
     url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
     hashtags = generate_hashtags(title)
     payload = {
@@ -118,15 +147,16 @@ def post_to_facebook(title, link, image_url=None):
 
     response = requests.post(url, data=payload)
     print("[FB POST]", response.json())
+    save_posted_asin(asin)
 
 
 def main():
     print("[BOT STARTED] Fetching Amazon deals...")
     deals = get_deals()
-    print(f"[INFO] Found {len(deals)} deals.")
-    for title, link, image_url in deals:
+    print(f"[INFO] Found {len(deals)} new deals.")
+    for asin, title, link, image_url in deals:
         print("[POSTING]", title)
-        post_to_facebook(title, link, image_url)
+        post_to_facebook(asin, title, link, image_url)
         time.sleep(10)
 
 
