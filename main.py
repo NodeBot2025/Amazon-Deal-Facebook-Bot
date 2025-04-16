@@ -89,10 +89,14 @@ def get_deals():
             hashtags = generate_hashtags(title)
 
             caption_lines = []
-            caption_lines.append(title)
+            if title and discount:
+                caption_lines.append(f"{discount}  {title}")
+            elif title:
+                caption_lines.append(title)
+
             if list_price and deal_price and discount:
                 caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
-            caption_lines.append(f"👉 {affiliate_link}")
+            caption_lines.append(f"👉 {affiliate_link}\n")  # Add double spacing after link
             if hashtags:
                 caption_lines.append(hashtags)
 
