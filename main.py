@@ -91,16 +91,11 @@ def calculate_discount(list_price, deal_price):
         return None
 
 
-def get_image_url(product_block):
-    img_tag = product_block.select_one("img")
-    return img_tag.get("src") if img_tag else None
-
-
 def clean_title(raw_text):
-    cleaned = re.sub(r'(?i)\b\d{1,3}%\s*off\b', '', raw_text)  # "20% off"
-    cleaned = re.sub(r'(?i)\b\d{1,3}%\b', '', cleaned)         # "20%" (standalone)
+    cleaned = re.sub(r'(?i)\b\d{1,3}%\s*off\b', '', raw_text)
+    cleaned = re.sub(r'(?i)\b\d{1,3}%\b', '', cleaned)
     cleaned = re.sub(r'(?i)(Limited time deal|Typical:|List:)', '', cleaned)
-    cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)        # "$19.99"
+    cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
 
@@ -131,7 +126,6 @@ def get_smart_intro(title, discount_str):
     title_lower = title.lower()
     base_intro = get_intro_line()
 
-    # Match category
     for keyword, phrases in CATEGORY_KEYWORDS.items():
         if keyword in title_lower:
             emoji = EMOJIS.get(keyword, "")
@@ -140,7 +134,6 @@ def get_smart_intro(title, discount_str):
     else:
         category_intro = base_intro
 
-    # Tiered discount intro
     try:
         discount_num = int(discount_str.split('%')[0])
     except:
@@ -177,7 +170,6 @@ def get_deals():
             affiliate_link = f"https://www.amazon.com{href.split('?')[0]}{AFFILIATE_TAG}"
             parent = block.find_parent("div")
             list_price, deal_price = extract_price_data(parent or block)
-            image_url = get_image_url(parent or block)
             discount = calculate_discount(list_price, deal_price)
             intro = get_smart_intro(title, discount)
             hashtags = generate_hashtags(title)
@@ -190,12 +182,12 @@ def get_deals():
 
             if list_price and deal_price and discount:
                 caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
-            caption_lines.append(f"👉 {affiliate_link}\n")
+            caption_lines.append(f"{affiliate_link}\n")  # Direct link for Facebook to render preview
             if hashtags:
                 caption_lines.append(hashtags)
 
             caption = '\n'.join(caption_lines)
-            extracted.append((caption, image_url))
+            extracted.append(caption)
 
             if len(extracted) >= POST_LIMIT:
                 break
@@ -205,20 +197,12 @@ def get_deals():
     return extracted
 
 
-def post_to_facebook(caption, image_url):
-    if image_url:
-        url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
-        payload = {
-            "caption": caption,
-            "url": image_url,
-            "access_token": FB_ACCESS_TOKEN
-        }
-    else:
-        url = f"https://graph.facebook.com/{FB_PAGE_ID}/feed"
-        payload = {
-            "message": caption,
-            "access_token": FB_ACCESS_TOKEN
-        }
+def post_to_facebook(caption):
+    url = f"https://graph.facebook.com/{FB_PAGE_ID}/feed"
+    payload = {
+        "message": caption,
+        "access_token": FB_ACCESS_TOKEN
+    }
 
     response = requests.post(url, data=payload)
     print("[FB POST]", response.status_code, response.text)
@@ -233,9 +217,9 @@ def main():
     else:
         print(f"[INFO] Found {len(deals)} deals to post.")
 
-    for caption, image_url in deals:
+    for caption in deals:
         print("[POSTING]", caption)
-        post_to_facebook(caption, image_url)
+        post_to_facebook(caption)
         time.sleep(10)
 
 
