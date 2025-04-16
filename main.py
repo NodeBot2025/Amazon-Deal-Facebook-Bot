@@ -51,6 +51,20 @@ def clean_title(raw_text):
     return cleaned.strip()
 
 
+def generate_hashtags(title):
+    keywords = re.findall(r"\b[A-Z][a-z]+|[a-z]{4,}\b", title)
+    seen = set()
+    hashtags = []
+    for word in keywords:
+        tag = '#' + re.sub(r'[^a-zA-Z0-9]', '', word.title())
+        if tag not in seen and len(tag) > 4:
+            hashtags.append(tag)
+            seen.add(tag)
+        if len(hashtags) >= 6:
+            break
+    return ' '.join(hashtags)
+
+
 def get_deals():
     soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
     all_blocks = soup.select("a[href*='/dp/']")
@@ -72,12 +86,15 @@ def get_deals():
             list_price, deal_price = extract_price_data(parent or block)
             image_url = get_image_url(parent or block)
             discount = calculate_discount(list_price, deal_price)
+            hashtags = generate_hashtags(title)
 
             caption_lines = []
             caption_lines.append(title)
             if list_price and deal_price and discount:
                 caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
             caption_lines.append(f"👉 {affiliate_link}")
+            if hashtags:
+                caption_lines.append(hashtags)
 
             caption = '\n'.join(caption_lines)
             extracted.append((caption, image_url))
