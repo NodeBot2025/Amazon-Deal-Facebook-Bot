@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # === LOAD SECRETS ===
 load_dotenv()
 
-AMAZON_URL = "https://www.amazon.com/gp/goldbox"
+AMAZON_URL = "https://www.amazon.com/deals?bubble-id=trending-bubble"
 AFFILIATE_TAG = "?tag=keithw.-20"  # Updated affiliate tag
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
@@ -74,14 +74,12 @@ def clean_amazon_url(raw_link):
 
 
 def get_deals():
-    print("[INFO] Scraping Amazon's Deals page...")
+    print("[INFO] Scraping Amazon's Trending Deals page...")
     response = requests.get(AMAZON_URL, headers=USER_AGENT)
     soup = BeautifulSoup(response.text, "html.parser")
 
     selectors = [
-        "div.a-section.a-text-center > a[href*='/dp/']",
-        "a[href*='/dp/']",
-        "div.a-row.a-size-base.a-color-secondary > a[href*='/dp/']"
+        "a[href*='/dp/']"
     ]
 
     extracted_deals = []
