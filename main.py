@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 import random
+import re
 from dotenv import load_dotenv
 
 # === LOAD SECRETS ===
@@ -49,6 +50,13 @@ def get_image_url(product_block):
     return img_tag.get("src") if img_tag else None
 
 
+def clean_title(raw_text):
+    # Remove dollar signs, price values, and tags like 'Typical:', 'Limited time deal'
+    cleaned = re.sub(r'(\$\d+(\.\d{2})?)|(Typical:)|(Limited time deal)', '', raw_text)
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned.strip()
+
+
 def get_deals():
     soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
     all_blocks = soup.select("a[href*='/dp/']")
@@ -59,7 +67,8 @@ def get_deals():
 
     for block in all_blocks:
         try:
-            title = ' '.join(block.get_text(strip=True).split())[:200]
+            raw_text = block.get_text(strip=True)
+            title = clean_title(raw_text)[:200]
             href = block.get("href")
             if not title or not href or "/dp/" not in href:
                 continue
