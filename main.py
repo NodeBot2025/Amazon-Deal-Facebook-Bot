@@ -98,8 +98,7 @@ def get_image_url(product_block):
 
 def clean_title(raw_text):
     cleaned = re.sub(r'(?i)\b\d{1,2}%\s*off\b', '', raw_text)
-    cleaned = re.sub(r'(?i)Limited time deal', '', cleaned)
-    cleaned = re.sub(r'(?i)Typical:', '', cleaned)
+    cleaned = re.sub(r'(?i)Limited time deal|Typical:|List:', '', cleaned)
     cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
