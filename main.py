@@ -19,10 +19,11 @@ USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 def extract_price_data(block):
     prices = block.select(".a-offscreen")
     prices = [p.get_text(strip=True).replace("$", "") for p in prices if p.get_text(strip=True).startswith("$")]
+    prices = list(dict.fromkeys(prices))
     if len(prices) >= 2:
         list_price, deal_price = prices[1], prices[0]
     elif prices:
-        list_price, deal_price = prices[0], prices[0]
+        list_price = deal_price = prices[0]
     else:
         list_price = deal_price = None
     return list_price, deal_price
@@ -36,6 +37,11 @@ def calculate_discount(list_price, deal_price):
         return f"{discount}% off"
     except:
         return None
+
+
+def get_limited_time_text(block):
+    tag = block.find(string=lambda text: text and "Limited time deal" in text)
+    return tag.strip() if tag else None
 
 
 def get_image_url(product_block):
@@ -63,12 +69,17 @@ def get_deals():
             list_price, deal_price = extract_price_data(parent or block)
             image_url = get_image_url(parent or block)
             discount = calculate_discount(list_price, deal_price)
+            ltd_text = get_limited_time_text(parent or block)
 
-            caption = f"{title}\n"
+            caption_lines = []
             if discount:
-                caption += f"{discount} — "
-            caption += f"List: ${list_price or 'N/A'} | Deal: ${deal_price or 'N/A'}\n👉 {affiliate_link}"
+                caption_lines.append(discount + (f" {ltd_text}" if ltd_text else ""))
+            caption_lines.append(title)
+            if list_price and deal_price:
+                caption_lines.append(f"{discount} — List: ${list_price} | Deal: ${deal_price}")
+            caption_lines.append(f"👉 {affiliate_link}")
 
+            caption = '\n'.join(caption_lines)
             extracted.append((caption, image_url))
 
             if len(extracted) >= POST_LIMIT:
