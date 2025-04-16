@@ -4,6 +4,7 @@ import time
 import os
 import random
 import re
+from datetime import datetime
 from dotenv import load_dotenv
 
 # === LOAD SECRETS ===
@@ -16,6 +17,56 @@ FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 POST_LIMIT = 5
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 
+# === ROTATING INTROS ===
+INTRO_LINES = [
+    "Deal of the day!",
+    "Check this out!",
+    "Hot pick!",
+    "Limited offer — don’t miss it!",
+    "Fresh off Amazon!",
+    "Just dropped!",
+    "Fan favorite deal!"
+]
+
+SEASONAL_INTROS = {
+    (1, 2): ["Start the year with savings!", "New Year. New Deals."],
+    (3, 4): ["Spring into savings!", "Fresh finds for spring!"],
+    (5, 6): ["Hot deals for summer!", "Summer savings unlocked!"],
+    (7, 8): ["Back to school picks!", "Gear up for the school year!"],
+    (9, 10): ["Fall favorites on sale!", "Autumn essentials!"],
+    (11, 12): ["Holiday gift idea!", "Early Black Friday deal!", "Perfect Christmas present!"]
+}
+
+CATEGORY_KEYWORDS = {
+    "toys": ["Playtime pick!", "Fun for all ages!", "Perfect for little hands!"],
+    "tech": ["Gadget drop!", "Upgrade your gear!", "Hot tech deal!"],
+    "kitchen": ["Chef’s choice!", "Kitchen must-have!", "Cook up savings!"],
+    "fitness": ["Stay active!", "Train smarter!", "Gear up & get moving!"],
+    "beauty": ["Glow-up deal!", "Beauty essential!", "Pamper yourself!"],
+    "fashion": ["Fresh fit!", "Style steal!", "Wardrobe win!"],
+    "home": ["Comfort meets savings!", "Home upgrade deal!", "Relax, it's on sale!"],
+    "office": ["Work smarter!", "Desk essential!", "Office upgrade deal!"]
+}
+
+EMOJIS = {
+    "toys": "🧸",
+    "tech": "💻",
+    "kitchen": "🍳",
+    "fitness": "🏋️",
+    "beauty": "💄",
+    "fashion": "👗",
+    "home": "🛋️",
+    "office": "📎"
+}
+
+DISCOUNT_TIERS = [
+    (50, ["🔥 Insane deal!", "Don't miss this steal!", "Absolute must-grab!"]),
+    (30, ["Hot deal!", "Big savings!", "Top value pick!"]),
+    (15, ["Nice price drop!", "Worth checking out!", "Solid value!"]),
+    (1,  ["Slight savings!", "Small discount — still worth it!"])
+]
+
+# === UTILITY FUNCTIONS ===
 
 def extract_price_data(block):
     prices = block.select(".a-offscreen")
@@ -46,10 +97,10 @@ def get_image_url(product_block):
 
 
 def clean_title(raw_text):
-    # Remove discount phrases, dollar prices, and common promo text
-    cleaned = re.sub(r'\b\d{1,2}%\s*off\b', '', raw_text, flags=re.IGNORECASE)
+    cleaned = re.sub(r'(?i)\b\d{1,2}%\s*off\b', '', raw_text)
+    cleaned = re.sub(r'(?i)Limited time deal', '', cleaned)
+    cleaned = re.sub(r'(?i)Typical:', '', cleaned)
     cleaned = re.sub(r'\$\d+(?:\.\d{2})?', '', cleaned)
-    cleaned = re.sub(r'\b(Typical:|Limited time deal)\b', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
 
@@ -67,6 +118,45 @@ def generate_hashtags(title):
             break
     return ' '.join(hashtags)
 
+
+def get_intro_line():
+    month = datetime.now().month
+    for (start, end), lines in SEASONAL_INTROS.items():
+        if start <= month <= end:
+            return random.choice(lines + INTRO_LINES)
+    return random.choice(INTRO_LINES)
+
+
+def get_smart_intro(title, discount_str):
+    title_lower = title.lower()
+    base_intro = get_intro_line()
+    
+    # Category match
+    for keyword, phrases in CATEGORY_KEYWORDS.items():
+        if keyword in title_lower:
+            emoji = EMOJIS.get(keyword, "")
+            category_intro = f"{emoji} {random.choice(phrases)}"
+            break
+    else:
+        category_intro = base_intro
+
+    # Tiered discount tone
+    try:
+        discount_num = int(discount_str.split('%')[0])
+    except:
+        discount_num = 0
+
+    for threshold, tier_lines in DISCOUNT_TIERS:
+        if discount_num >= threshold:
+            tier_intro = random.choice(tier_lines)
+            break
+    else:
+        tier_intro = ""
+
+    return f"{tier_intro} {category_intro}".strip()
+
+
+# === SCRAPE & POST ===
 
 def get_deals():
     soup = BeautifulSoup(requests.get(AMAZON_URL, headers=USER_AGENT).text, "html.parser")
@@ -89,9 +179,10 @@ def get_deals():
             list_price, deal_price = extract_price_data(parent or block)
             image_url = get_image_url(parent or block)
             discount = calculate_discount(list_price, deal_price)
+            intro = get_smart_intro(title, discount)
             hashtags = generate_hashtags(title)
 
-            caption_lines = []
+            caption_lines = [intro]
             if title and discount:
                 caption_lines.append(f"{discount}  {title}")
             elif title:
