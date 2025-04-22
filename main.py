@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AMAZON_URL = "https://www.amazon.com/gp/goldbox"
-AFFILIATE_TAG = "?tag=keithw.-20"
+AFFILIATE_TAG = "?tag=amazondealstoday01-20"
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 POST_LIMIT = 5
